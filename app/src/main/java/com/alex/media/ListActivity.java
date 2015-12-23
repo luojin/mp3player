@@ -101,6 +101,7 @@ public class ListActivity extends Activity {
 			this.finish();
 			Intent intent = new Intent();
 			intent.setClass(this, MainActivity.class);
+			finish();
 		}
 		return true;
     }

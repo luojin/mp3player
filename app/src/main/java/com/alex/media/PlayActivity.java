@@ -44,38 +44,34 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 	private Uri uri;
 	private ImageButton playBtn = null;//播放、暂停
 	//private Button stopBtn = null;//停止
-	private ImageButton latestBtn = null;//上一首
-	private ImageButton nextButton = null;//下一首
-	private ImageButton forwardBtn = null;//快进
-	private ImageButton rewindBtn = null;//快退
+
 	private TextView lrcText = null;//歌词文本
 	private TextView playtime = null;//已播放时间
 	private TextView durationTime = null;//歌曲时间
 	private SeekBar seekbar = null;//歌曲进度
-	private SeekBar soundBar = null;//音量调节
+//	private SeekBar soundBar = null;//音量调节
 	private Handler handler = null;//用于进度条
 	private Handler fHandler = null;//用于快进
     private int currentPosition;//当前播放位置
     private DBHelper dbHelper = null;
-	
-	
+
 	private TreeMap<Integer, LRCbean> lrc_map = new TreeMap<Integer, LRCbean>();
 	private Cursor myCur;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.play);
+
 		Intent intent = this.getIntent();
 		Bundle bundle = intent.getExtras();
 		_ids = bundle.getIntArray("_ids");
 		position = bundle.getInt("position");
+
 		fHandler = new Handler();
 		fHandler.removeCallbacks(forward);
+
 		lrcText = (TextView)findViewById(R.id.lrc);
-		
-		
-		
-		
 		
 		/*歌曲时间*/
 		playtime = (TextView)findViewById(R.id.playtime);//已经播放的时间
@@ -112,88 +108,88 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 		
 		
 		/*上一首、下一首*/
-		latestBtn = (ImageButton)findViewById(R.id.latestBtn);
-		latestBtn.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-				int num = _ids.length;
-				if(position==0){
-					position=num-1;
-				}else{
-					position-=1;
-				}
-				System.out.println(position);
-				int pos = _ids[position];
-			
-				lrc_map.clear();
-				setup();
-				play();
-				
-				
-			}
-		});
-		
-		nextButton = (ImageButton)findViewById(R.id.nextBtn);
-		nextButton.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-				int num = _ids.length;
-				if (position==num-1){
-					position=0;
-				}else{
-					position+=1;
-				}
-				int pos = _ids[position];
-				lrc_map.clear();
-				setup();
-				play();
-			}
-		});
-		
-		/*快进、快退*/
-		forwardBtn = (ImageButton)findViewById(R.id.forwardBtn);//快进
-		forwardBtn.setOnTouchListener(new OnTouchListener() {
-			
-			@Override
-			public boolean onTouch(View v, MotionEvent event) {
-				switch (event.getAction()) {
-				case MotionEvent.ACTION_DOWN:
-					fHandler.post(forward);
-					mp.pause();
-					break;
-
-				case MotionEvent.ACTION_UP:
-					fHandler.removeCallbacks(forward);
-					mp.start();
-					playBtn.setBackgroundResource(R.drawable.pause_selecor);
-					break;
-				}
-				return false;
-			}
-		});
-		
-		rewindBtn = (ImageButton)findViewById(R.id.rewindBtn);
-		rewindBtn.setOnTouchListener(new OnTouchListener() {
-			
-			@Override
-			public boolean onTouch(View v, MotionEvent event) {
-				switch (event.getAction()) {
-				case MotionEvent.ACTION_DOWN:
-					fHandler.post(rewind);
-					mp.pause();
-					break;
-
-				case MotionEvent.ACTION_UP:
-					fHandler.removeCallbacks(rewind);
-					mp.start();
-					playBtn.setBackgroundResource(R.drawable.pause_selecor);
-					break;
-				}
-				return false;
-			}
-		});
+//		latestBtn = (ImageButton)findViewById(R.id.latestBtn);
+//		latestBtn.setOnClickListener(new View.OnClickListener() {
+//
+//			@Override
+//			public void onClick(View v) {
+//				int num = _ids.length;
+//				if(position==0){
+//					position=num-1;
+//				}else{
+//					position-=1;
+//				}
+//				System.out.println(position);
+//				int pos = _ids[position];
+//
+//				lrc_map.clear();
+//				setup();
+//				play();
+//
+//
+//			}
+//		});
+//
+//		nextButton = (ImageButton)findViewById(R.id.nextBtn);
+//		nextButton.setOnClickListener(new View.OnClickListener() {
+//
+//			@Override
+//			public void onClick(View v) {
+//				int num = _ids.length;
+//				if (position==num-1){
+//					position=0;
+//				}else{
+//					position+=1;
+//				}
+//				int pos = _ids[position];
+//				lrc_map.clear();
+//				setup();
+//				play();
+//			}
+//		});
+//
+//		/*快进、快退*/
+//		forwardBtn = (ImageButton)findViewById(R.id.forwardBtn);//快进
+//		forwardBtn.setOnTouchListener(new OnTouchListener() {
+//
+//			@Override
+//			public boolean onTouch(View v, MotionEvent event) {
+//				switch (event.getAction()) {
+//				case MotionEvent.ACTION_DOWN:
+//					fHandler.post(forward);
+//					mp.pause();
+//					break;
+//
+//				case MotionEvent.ACTION_UP:
+//					fHandler.removeCallbacks(forward);
+//					mp.start();
+//					playBtn.setBackgroundResource(R.drawable.pause_selecor);
+//					break;
+//				}
+//				return false;
+//			}
+//		});
+//
+//		rewindBtn = (ImageButton)findViewById(R.id.rewindBtn);
+//		rewindBtn.setOnTouchListener(new OnTouchListener() {
+//
+//			@Override
+//			public boolean onTouch(View v, MotionEvent event) {
+//				switch (event.getAction()) {
+//				case MotionEvent.ACTION_DOWN:
+//					fHandler.post(rewind);
+//					mp.pause();
+//					break;
+//
+//				case MotionEvent.ACTION_UP:
+//					fHandler.removeCallbacks(rewind);
+//					mp.start();
+//					playBtn.setBackgroundResource(R.drawable.pause_selecor);
+//					break;
+//				}
+//				return false;
+//			}
+//		});
 		
 		
 		/*SeekBar进度条*/
@@ -221,32 +217,32 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 		});
 		
 		/*音量控制条*/
-		soundBar = (SeekBar)findViewById(R.id.sound);
-		soundBar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
-			
-			@Override
-			public void onStopTrackingTouch(SeekBar seekBar) {
-				// TODO Auto-generated method stub
-				
-			}
-			
-			@Override
-			public void onStartTrackingTouch(SeekBar seekBar) {
-				// TODO Auto-generated method stub
-				
-			}
-			
-			@Override
-			public void onProgressChanged(SeekBar seekBar, int progress,
-					boolean fromUser) {
-				// TODO Auto-generated method stub
-				if (fromUser){
-					int ScurrentPosition = soundBar.getProgress();
-					mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, ScurrentPosition, 0);
-					
-				}
-			}
-		});
+//		soundBar = (SeekBar)findViewById(R.id.sound);
+//		soundBar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+//
+//			@Override
+//			public void onStopTrackingTouch(SeekBar seekBar) {
+//				// TODO Auto-generated method stub
+//
+//			}
+//
+//			@Override
+//			public void onStartTrackingTouch(SeekBar seekBar) {
+//				// TODO Auto-generated method stub
+//
+//			}
+//
+//			@Override
+//			public void onProgressChanged(SeekBar seekBar, int progress,
+//					boolean fromUser) {
+//				// TODO Auto-generated method stub
+//				if (fromUser){
+//					int ScurrentPosition = soundBar.getProgress();
+//					mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, ScurrentPosition, 0);
+//
+//				}
+//			}
+//		});
 		setup();//准备播放
 		play();//开始播放
 		
@@ -260,20 +256,20 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 				mp.release();
 				mp = null;
 			}
+
+			pause();
+			fHandler.removeCallbacks(forward);
+			fHandler.removeCallbacks(rewind);
+			fHandler = null;
+			handler.removeMessages(1);
+			handler = null;
+			dbHelper.close();
+			Intent intent = new Intent(this, ListActivity.class);
+			startActivity(intent);
+			finish();
 		}
-		fHandler.removeCallbacks(forward);
-		fHandler.removeCallbacks(rewind);
-		fHandler=null;
-		handler.removeMessages(1);
-		handler=null;
-		dbHelper.close();
-		Intent intent = new Intent(this, ListActivity.class);
-		startActivity(intent);
-		finish();
-		return true;
+		return false;
 	}
-	
-	
 
 
 	private void loadClip(){
@@ -320,8 +316,8 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 					/*获得当前音乐音量*/
 					int currentSound = mAudioManager.getStreamVolume( AudioManager.STREAM_MUSIC );
 					
-					soundBar.setMax(maxSound);
-					soundBar.setProgress(currentSound);
+//					soundBar.setMax(maxSound);
+//					soundBar.setProgress(currentSound);
 
 				}
 			});
@@ -398,7 +394,6 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 				        	if (mp.getCurrentPosition()>val.getBeginTime()
 				        			&&mp.getCurrentPosition()<val.getBeginTime()+val.getLineTime()){
 				        		lrcText.setText(val.getLrcBody());
-				        		System.out.println("123");
 				        		break;
 				        	}
 			        	}
