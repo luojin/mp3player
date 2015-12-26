@@ -50,7 +50,7 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 	private Cursor myCur;
 
 	private static final int UPDATE_VIEW = 1;
-    private static final int UPDATE_LRC = 2;
+    private static final int PAUSE = 2;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -93,11 +93,14 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 			@Override
 			public void onStopTrackingTouch(SeekBar seekBar) {
 				mediaPlayer.start();
+                sendUpdateView();
 			}
 			
 			@Override
 			public void onStartTrackingTouch(SeekBar seekBar) {
 				mediaPlayer.pause();
+                removePause();
+                removeUpdateView();
 			}
 			
 			@Override
@@ -125,7 +128,7 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 
 			pause();
 
-			handler.removeMessages(UPDATE_VIEW);
+            removeUpdateView();
 			handler = null;
 			dbHelper.close();
 			Intent intent = new Intent(this, ListActivity.class);
@@ -167,7 +170,7 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 				@Override
 				public void onPrepared(final MediaPlayer mp) {
 					seekbar.setMax(mp.getDuration());//设置播放进度条最大值
-					handler.sendEmptyMessage(UPDATE_VIEW);//向handler发送消息，启动播放进度条
+                    sendUpdateView();//向handler发送消息，启动播放进度条
 					playtime.setText(toTime(mp.getCurrentPosition()));//初始化播放时间
 					durationTime.setText(toTime(mp.getDuration()));//设置歌曲时间
 					mp.seekTo(currentPosition);//初始化MediaPlayer播放位置
@@ -199,11 +202,13 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 	private void play(){
 		mediaPlayer.start();
 		playBtn.setBackgroundResource(R.drawable.pause_selecor);
-		
+        sendUpdateView();
+        removePause();
 	}
 	
 	private void pause(){
-		mediaPlayer.pause();
+        if (mediaPlayer!=null)
+		    mediaPlayer.pause();
 	}
 	
 	private void stop(){
@@ -233,21 +238,28 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 						currentPosition = mediaPlayer.getCurrentPosition();
 					seekbar.setProgress(currentPosition);
 					playtime.setText(toTime(currentPosition));
-					handler.sendEmptyMessage(UPDATE_VIEW);
 
+                    boolean update = false;
                     for (Integer o : lrc_map.keySet()) {
                         LRCbean val = lrc_map.get(o);
                         if (val != null) {
                             if (mediaPlayer.getCurrentPosition() > val.getBeginTime()
                                     && mediaPlayer.getCurrentPosition() < val.getBeginTime() + val.getLineTime()) {
                                 lrcText.setText(val.getLrcBody());
+
+                                sendPause(val.getBeginTime() + val.getLineTime()-mediaPlayer.getCurrentPosition()+1);
+                                update=true;
                                 break;
                             }
                         }
                     }
+                    if(!update)
+                        sendUpdateView();
+
 					break;
 
-                case UPDATE_LRC:
+                case PAUSE:
+                    playBtn.performClick();
                     break;
 
 				default:
@@ -256,6 +268,27 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 
 		}
 	}
+
+    private void sendUpdateView(){
+        removeUpdateView();
+        handler.sendEmptyMessage(UPDATE_VIEW);
+    }
+
+    private void removeUpdateView(){
+        handler.removeMessages(UPDATE_VIEW);
+    }
+
+    private void sendPause(int delayMillis){
+        removePause();
+
+        Message message = Message.obtain();
+        message.what= PAUSE;
+        handler.sendMessageDelayed(message, delayMillis);
+    }
+
+    private void removePause(){
+        handler.removeMessages(PAUSE);
+    }
 	
 	public String toTime(int time) {
 		time /= 1000;
@@ -379,9 +412,5 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 				myCur.getString(5).lastIndexOf("."));
 		readLrc(name + ".lrc");
 	}
-
-	 
-			
-
 
 }
