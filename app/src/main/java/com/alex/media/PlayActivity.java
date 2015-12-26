@@ -12,14 +12,11 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.TreeMap;
 
-import com.alex.media.LRCbean;
-
 
 import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
-import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.net.Uri;
@@ -28,9 +25,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.provider.MediaStore;
 import android.view.KeyEvent;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.View.OnTouchListener;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -39,24 +34,23 @@ import android.widget.SeekBar.OnSeekBarChangeListener;
 public class PlayActivity extends Activity implements MediaPlayer.OnCompletionListener{
 	private int[] _ids;
 	private int position;
-	private MediaPlayer mp=null;
-	private AudioManager mAudioManager = null;
+	private MediaPlayer mediaPlayer =null;
 	private Uri uri;
 	private ImageButton playBtn = null;//播放、暂停
-	//private Button stopBtn = null;//停止
 
-	private TextView lrcText = null;//歌词文本
-	private TextView playtime = null;//已播放时间
-	private TextView durationTime = null;//歌曲时间
-	private SeekBar seekbar = null;//歌曲进度
-//	private SeekBar soundBar = null;//音量调节
-	private Handler handler = null;//用于进度条
-	private Handler fHandler = null;//用于快进
-    private int currentPosition;//当前播放位置
+	private TextView lrcText = null;		//歌词文本
+	private TextView playtime = null;		//已播放时间
+	private TextView durationTime = null;	//歌曲时间
+	private SeekBar seekbar = null;			//歌曲进度
+	private Handler handler = null;			//用于进度条
+    private int currentPosition;			//当前播放位置
     private DBHelper dbHelper = null;
 
 	private TreeMap<Integer, LRCbean> lrc_map = new TreeMap<Integer, LRCbean>();
 	private Cursor myCur;
+
+	private static final int UPDATE_VIEW = 1;
+    private static final int UPDATE_LRC = 2;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -67,9 +61,6 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 		Bundle bundle = intent.getExtras();
 		_ids = bundle.getIntArray("_ids");
 		position = bundle.getInt("position");
-
-		fHandler = new Handler();
-		fHandler.removeCallbacks(forward);
 
 		lrcText = (TextView)findViewById(R.id.lrc);
 		
@@ -83,7 +74,7 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 		playBtn.setOnClickListener(new View.OnClickListener() {	
 			@Override
 			public void onClick(View v) {
-				if (mp.isPlaying()){
+				if (mediaPlayer.isPlaying()){
 					pause();
 					playBtn.setBackgroundResource(R.drawable.play_selecor);
 				} else{
@@ -101,19 +92,19 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 			
 			@Override
 			public void onStopTrackingTouch(SeekBar seekBar) {
-				mp.start();
+				mediaPlayer.start();
 			}
 			
 			@Override
 			public void onStartTrackingTouch(SeekBar seekBar) {
-				mp.pause();
+				mediaPlayer.pause();
 			}
 			
 			@Override
 			public void onProgressChanged(SeekBar seekBar, int progress,
 					boolean fromUser) {
 				if(fromUser){
-					mp.seekTo(progress);
+					mediaPlayer.seekTo(progress);
 				}
 			}
 		});
@@ -126,17 +117,15 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 	
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
 		if (keyCode == event.KEYCODE_BACK) {
-			if (mp != null) {
-				mp.reset();
-				mp.release();
-				mp = null;
+			if (mediaPlayer != null) {
+				mediaPlayer.reset();
+				mediaPlayer.release();
+				mediaPlayer = null;
 			}
 
 			pause();
-			fHandler.removeCallbacks(forward);
-			fHandler.removeCallbacks(rewind);
-			fHandler = null;
-			handler.removeMessages(1);
+
+			handler.removeMessages(UPDATE_VIEW);
 			handler = null;
 			dbHelper.close();
 			Intent intent = new Intent(this, ListActivity.class);
@@ -148,21 +137,19 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 
 
 	private void loadClip(){
-		if (mp != null) {
-			mp.reset();
-			mp.release();
-			mp = null;
+		if (mediaPlayer != null) {
+			mediaPlayer.reset();
+			mediaPlayer.release();
+			mediaPlayer = null;
 		}
-		mp = new MediaPlayer();//创建多媒体对象
-		mp.setOnCompletionListener(this);
+		mediaPlayer = new MediaPlayer();//创建多媒体对象
+		mediaPlayer.setOnCompletionListener(this);
 		int pos = _ids[position];
 		DBOperate(pos);
 	    uri = Uri.withAppendedPath(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
 				"" + pos);
 	    try {
-			mp.setDataSource(this, uri);
-			
-			
+			mediaPlayer.setDataSource(this, uri);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -174,13 +161,13 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 		loadClip();
 		init();
 		try {
-			mp.prepare();
-			mp.setOnPreparedListener(new OnPreparedListener() {
-				
+			mediaPlayer.prepare();
+			mediaPlayer.setOnPreparedListener(new OnPreparedListener() {
+
 				@Override
 				public void onPrepared(final MediaPlayer mp) {
 					seekbar.setMax(mp.getDuration());//设置播放进度条最大值
-					handler.sendEmptyMessage(1);//向handler发送消息，启动播放进度条
+					handler.sendEmptyMessage(UPDATE_VIEW);//向handler发送消息，启动播放进度条
 					playtime.setText(toTime(mp.getCurrentPosition()));//初始化播放时间
 					durationTime.setText(toTime(mp.getDuration()));//设置歌曲时间
 					mp.seekTo(currentPosition);//初始化MediaPlayer播放位置
@@ -210,74 +197,69 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 	}
 	
 	private void play(){
-		fHandler.removeCallbacks(forward);
-		fHandler.removeCallbacks(rewind);
-		mp.start();
+		mediaPlayer.start();
 		playBtn.setBackgroundResource(R.drawable.pause_selecor);
 		
 	}
 	
 	private void pause(){
-		fHandler.removeCallbacks(forward);
-		fHandler.removeCallbacks(rewind);
-		mp.pause();
-		
+		mediaPlayer.pause();
 	}
 	
 	private void stop(){
-		mp.stop();
-		fHandler.removeCallbacks(forward);
-		fHandler.removeCallbacks(rewind);
+		mediaPlayer.stop();
 		playBtn.setBackgroundResource(R.drawable.play_selecor);
 		try {
-			mp.prepare();
-			mp.seekTo(0);
-			seekbar.setProgress(mp.getCurrentPosition());
+			mediaPlayer.prepare();
+			mediaPlayer.seekTo(0);
+			seekbar.setProgress(mediaPlayer.getCurrentPosition());
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		
 	}
 	 
-	private void init(){
-		 handler = new Handler(){
-			public void handleMessage(Message msg){
-				super.handleMessage(msg);
-				switch (msg.what) {
-				case 1:
-					if(mp!=null)
-						currentPosition = mp.getCurrentPosition();
+	private void init() {
+		handler = new msgHandler();
+	}
+
+	class msgHandler extends Handler{
+		@Override
+		public void handleMessage(Message msg) {
+			super.handleMessage(msg);
+			switch (msg.what) {
+				case UPDATE_VIEW:
+					if(mediaPlayer !=null)
+						currentPosition = mediaPlayer.getCurrentPosition();
 					seekbar.setProgress(currentPosition);
 					playtime.setText(toTime(currentPosition));
-					handler.sendEmptyMessage(1);
-					Iterator<Integer> iterator=lrc_map.keySet().iterator();
-					while(iterator.hasNext()){
-						Object o = iterator.next();
-			        	LRCbean val = lrc_map.get(o);
-			        	if (val!=null){
-			        		
-				        	if (mp.getCurrentPosition()>val.getBeginTime()
-				        			&&mp.getCurrentPosition()<val.getBeginTime()+val.getLineTime()){
-				        		lrcText.setText(val.getLrcBody());
-				        		break;
-				        	}
-			        	}
-					}
+					handler.sendEmptyMessage(UPDATE_VIEW);
+
+                    for (Integer o : lrc_map.keySet()) {
+                        LRCbean val = lrc_map.get(o);
+                        if (val != null) {
+                            if (mediaPlayer.getCurrentPosition() > val.getBeginTime()
+                                    && mediaPlayer.getCurrentPosition() < val.getBeginTime() + val.getLineTime()) {
+                                lrcText.setText(val.getLrcBody());
+                                break;
+                            }
+                        }
+                    }
 					break;
+
+                case UPDATE_LRC:
+                    break;
 
 				default:
 					break;
-				}
-				
 			}
-		};
+
+		}
 	}
 	
 	public String toTime(int time) {
-
 		time /= 1000;
 		int minute = time / 60;
-		int hour = minute / 60;
 		int second = time % 60;
 		minute %= 60;
 		return String.format("%02d:%02d", minute, second);
@@ -308,38 +290,7 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 		}
 	}
 	
-	Runnable forward = new Runnable() {//快进
-		
-		@Override
-		public void run() {
-			if(currentPosition<=mp.getDuration()){
-				currentPosition+=5000;
-				mp.seekTo(currentPosition);
-				fHandler.postDelayed(forward, 500);
-			}else{
-				fHandler.removeCallbacks(forward);
-			}
-			
-		}
-	};
-	
-	Runnable rewind = new Runnable() {//快退
-		
-		@Override
-		public void run() {
-			if (currentPosition>=0){
-				currentPosition-=5000;
-				mp.seekTo(currentPosition);
-				fHandler.postDelayed(rewind, 500);
-			}else{
-				fHandler.removeCallbacks(rewind);
-			}
-		}
-	};
-	
-	
-	
-	private void read(String path){
+	private void readLrc(String path){
     	TreeMap<Integer, LRCbean> lrc_read = new TreeMap<Integer, LRCbean>();
     	String data = "";
     	BufferedReader br = null;
@@ -352,13 +303,11 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 		try {
 			stream = new FileInputStream(file);
             br = new BufferedReader(new InputStreamReader(
-					stream, "GB2312"));
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (UnsupportedEncodingException e) {
+					stream, "UTF-8"));
+		} catch (FileNotFoundException | UnsupportedEncodingException e) {
 			e.printStackTrace();
 		}
-		try {
+        try {
 			while((data=br.readLine())!=null){
 				if (data.length()>6){
 					if (data.charAt(3)==':'&&data.charAt(6)=='.'){//从歌词正文开始
@@ -386,15 +335,16 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 					}
 				}
 			}
-			stream.close();
-		} catch (IOException e) {
+            if (stream != null) {
+                stream.close();
+            }
+        } catch (IOException e) {
 			e.printStackTrace();
 		}
 		
 		//计算每句歌词需要的时间
 		lrc_map.clear();
-		data = "";
-		Iterator<Integer> iterator = lrc_read.keySet().iterator();
+        Iterator<Integer> iterator = lrc_read.keySet().iterator();
 		LRCbean oldval = null;
 		int i = 0;
 		while (iterator.hasNext()){
@@ -403,10 +353,9 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 			if (oldval==null){
 				oldval = val;
 			} else{
-				LRCbean item1 = new LRCbean();
-				item1 = oldval;
+				LRCbean item1 = oldval;
 				item1.setLineTime(val.getBeginTime()-oldval.getBeginTime());
-				lrc_map.put(new Integer(i), item1);
+				lrc_map.put(i, item1);
 				i++;
 				oldval = val;
 			}
@@ -428,7 +377,7 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 
 		String name = myCur.getString(5).substring(0,
 				myCur.getString(5).lastIndexOf("."));
-		read( name + ".lrc");
+		readLrc(name + ".lrc");
 	}
 
 	 
