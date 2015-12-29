@@ -99,14 +99,13 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
-                mediaPlayer.pause();
-                removePause();
+                pause();
                 removeUpdateView();
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                mediaPlayer.start();
+                play();
                 sendUpdateView();
             }
 
@@ -114,7 +113,14 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
             public void onProgressChanged(SeekBar seekBar, int progress,
                                           boolean fromUser) {
                 if(fromUser){
-                    mediaPlayer.seekTo(progress);
+                    for (int k=0; k<lyricList.size(); k++) {
+                        LyricBean item = lyricList.get(k);
+                        if(item.getBeginTime()<=progress &&
+                                progress<item.getBeginTime()+item.getSleepTime()){
+                            lyricI=k;
+                            break;
+                        }
+                    }
                 }
             }
         });
@@ -180,13 +186,11 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
     private int lyricI = 0;
 	private void play(){
         removePause();
-//        sendUpdateView();
 
         mediaPlayer.start();
         if(lyricList.size()>0){
             mediaPlayer.seekTo((int) lyricList.get(lyricI).getBeginTime());
             sendPause(lyricList.get(lyricI).getSleepTime());
-            Log.e(TAG,"sleep="+lyricList.get(lyricI).getSleepTime());
             lrcText.setText(lyricList.get(lyricI).getLrcBody());
             lyricI++;
         }
@@ -196,6 +200,7 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 	private void pause(){
         if (mediaPlayer!=null)
 		    mediaPlayer.pause();
+        removePause();
 	}
 	
 	private void stop(){
@@ -221,17 +226,6 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 						currentPosition = mediaPlayer.getCurrentPosition();
 					seekbar.setProgress(currentPosition);
 					playtime.setText(toTime(currentPosition));
-//                    for (LyricBean item:lyricList) {
-//                        if(currentPosition>=item.getBeginTime()&&
-//                                currentPosition<item.getBeginTime()+item.getSleepTime()){
-//                            lrcText.setText(item.getLrcBody());
-//
-//                            long delay = item.getBeginTime()+item.getSleepTime()-currentPosition;
-//                            Log.e(TAG,"current="+currentPosition+" delay="+delay);
-//                            sendPause( delay);
-//                            return;
-//                        }
-//                    }
 
                     sendUpdateView();
                     break;
