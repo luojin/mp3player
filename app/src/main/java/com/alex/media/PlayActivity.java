@@ -121,6 +121,9 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
                             break;
                         }
                     }
+
+                    if(lyricList.size()==0)
+                        mediaPlayer.seekTo(progress);
                 }
             }
         });
