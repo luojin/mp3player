@@ -180,11 +180,13 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
     private int lyricI = 0;
 	private void play(){
         removePause();
-        sendUpdateView();
+//        sendUpdateView();
 
         mediaPlayer.start();
         if(lyricList.size()>0){
+            mediaPlayer.seekTo((int) lyricList.get(lyricI).getBeginTime());
             sendPause(lyricList.get(lyricI).getSleepTime());
+            Log.e(TAG,"sleep="+lyricList.get(lyricI).getSleepTime());
             lrcText.setText(lyricList.get(lyricI).getLrcBody());
             lyricI++;
         }
@@ -267,11 +269,12 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
     }
 	
 	public String toTime(int time) {
-		time /= 1000;
+		int milliSecond = time%1000;
+        time /= 1000;
 		int minute = time / 60;
 		int second = time % 60;
 		minute %= 60;
-		return String.format("%02d:%02d", minute, second);
+		return String.format("%02d:%02d.%03d", minute, second, milliSecond);
 	}
 	
 	private void dbSave(int pos){
