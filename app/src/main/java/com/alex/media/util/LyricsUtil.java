@@ -147,6 +147,7 @@ public class LyricsUtil {
                 if ( matcher.find()){
                     String lyricTime = matcher.group();//获取匹配得到的值
                     String lyricContent= lineItem.substring(lyricTime.length());//获取歌词内容
+                    Log.e(TAG,lyricTime + " : " + lyricContent);
                     long beginTime = getMilliSecond(lyricTime);//转换成毫秒
 
                     LyricBean lyricBean = new LyricBean();

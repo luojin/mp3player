@@ -9,5 +9,6 @@ public class Constants {
     public static final String UTF16BE = "UTF-16BE";
     public static final String GBK = "GBK";
 
-    public static final String LYRIC_PATTERN = "\\[([^\\]]+)\\]";
+//    public static final String LYRIC_PATTERN = "\\[([^\\]]+)\\]";
+    public static final String LYRIC_PATTERN = "\\[([0-9]+:[0-9]+.[0-9]+)\\]";
 }
