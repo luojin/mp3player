@@ -3,7 +3,6 @@ package com.alex.media;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.TreeMap;
 import java.util.Vector;
 
 import android.app.Activity;
@@ -44,6 +43,9 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
     private DBHelper dbHelper = null;
     private Vector<LyricBean> lyricList = new Vector<>();
 
+    private long startTime;
+    private long endTime;
+
     private static final int UPDATE_VIEW = 1;
     private static final int PAUSE = 2;
 
@@ -57,7 +59,6 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
         setView();
 
 		prepare();  //准备播放
-		play();     //开始播放
 	}
 
     private void initData(){
@@ -86,9 +87,11 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
                 if(mediaPlayer==null)return;
 
                 if (mediaPlayer.isPlaying()){
+                    removeUpdateView();
                     pause();
                     playBtn.setBackgroundResource(R.drawable.play_selecor);
                 } else{
+                    sendUpdateView();
                     play();
                     playBtn.setBackgroundResource(R.drawable.pause_selecor);
                 }
@@ -163,8 +166,9 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
                     sendUpdateView(); //向handler发送消息，启动播放进度条
 					playtime.setText(toTime(mp.getCurrentPosition()));//初始化播放时间
 					durationTime.setText(toTime(mp.getDuration()));//设置歌曲总时间
-
 					mp.seekTo(currentPosition);//初始化MediaPlayer播放位置
+
+                    play();
 				}
 			});
 		} catch (Exception e) {
@@ -190,13 +194,20 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 	private void play(){
         removePause();
 
-        mediaPlayer.start();
         if(lyricList.size()>0){
-            mediaPlayer.seekTo((int) lyricList.get(lyricI).getBeginTime());
-            sendPause(lyricList.get(lyricI).getSleepTime());
-            lrcText.setText(lyricList.get(lyricI).getLrcBody());
+            LyricBean item = lyricList.get(lyricI);
+            lrcText.setText(item.getLrcBody());
             lyricI++;
+
+            mediaPlayer.seekTo((int) item.getBeginTime());
+            endTime = item.getBeginTime()+item.getSleepTime();
+            Log.e(TAG,"sleeptime = "+item.getSleepTime());
+        }else{
+            endTime = mediaPlayer.getDuration();
         }
+
+        mediaPlayer.start();
+        Log.e(TAG,"mediaplayer start="+toTime(mediaPlayer.getCurrentPosition()));
         playBtn.setBackgroundResource(R.drawable.pause_selecor);
 	}
 	
@@ -230,11 +241,18 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 					seekbar.setProgress(currentPosition);
 					playtime.setText(toTime(currentPosition));
 
-                    sendUpdateView();
+                    if(currentPosition > endTime) {
+                        removeUpdateView();
+                        sendPause(0);
+                    }
+                    else
+                        sendUpdateView();
+
                     break;
 
                 case PAUSE:
                     playBtn.performClick();
+                    Log.e(TAG,"mediaplayer end="+toTime(mediaPlayer.getCurrentPosition()));
                     break;
 
 				default:
@@ -246,7 +264,10 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
 
     private void sendUpdateView(){
         removeUpdateView();
-        handler.sendEmptyMessage(UPDATE_VIEW);
+
+        Message message = Message.obtain();
+        message.what = UPDATE_VIEW;
+        handler.sendMessageDelayed(message, 100);
     }
 
     private void removeUpdateView(){
@@ -339,5 +360,6 @@ public class PlayActivity extends Activity implements MediaPlayer.OnCompletionLi
             e.printStackTrace();
         }
     }
+
 
 }

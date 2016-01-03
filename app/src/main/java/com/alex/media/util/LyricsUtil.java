@@ -100,6 +100,8 @@ public class LyricsUtil {
         int second = Integer.parseInt(splitList[1]);//秒
         int milliSecond = Integer.parseInt(splitList[2]);//毫秒
 
+        milliSecond = milliSecond<100?milliSecond*10:milliSecond;
+
         return (minute*60 + second) * 1000 + milliSecond;//转换成毫秒
     }
 
