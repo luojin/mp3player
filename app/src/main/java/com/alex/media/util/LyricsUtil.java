@@ -95,14 +95,11 @@ public class LyricsUtil {
      * @return millisecond
      */
     private static long getMilliSecond(String milliSec){
-        String splitList[] = milliSec.replace(".",":").replace("[", "").replace("]", "").split(":");
+        String splitList[] = milliSec.replace("[", "").replace("]", "").split(":");
         int minute = Integer.parseInt(splitList[0]);//分
-        int second = Integer.parseInt(splitList[1]);//秒
-        int milliSecond = Integer.parseInt(splitList[2]);//毫秒
+        float second = Float.parseFloat(splitList[1]);//秒&毫秒
 
-        milliSecond = milliSecond<100?milliSecond*10:milliSecond;
-
-        return (minute*60 + second) * 1000 + milliSecond;//转换成毫秒
+        return (long) ((minute*60 + second) * 1000);//转换成毫秒
     }
 
     /**
